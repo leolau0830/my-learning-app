@@ -3,131 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的語言學習 Excel 表格版</title>
+    <title>語言學習試算表 (Excel 自由版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
         ::-webkit-scrollbar { display: none; }
+        /* Excel 遮蓋樣式 */
+        .excel-masked {
+            background-color: #1e293b !important;
+            color: #1e293b !important;
+            cursor: pointer;
+            user-select: none;
+        }
+        .excel-masked:hover {
+            background-color: #334155 !important;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-gray-800 p-4 md:p-8 flex flex-col items-center min-h-screen">
+<body class="bg-slate-100 text-gray-800 p-2 md:p-6 flex flex-col items-center min-h-screen">
 
-    <div id="app" class="w-full max-w-5xl bg-white shadow-2xl rounded-2xl overflow-hidden flex flex-col min-h-[90vh]">
+    <div id="app" class="w-full max-w-6xl bg-white shadow-2xl rounded-xl overflow-hidden flex flex-col min-h-[92vh]">
         
-        <header class="bg-slate-800 text-white p-5 flex flex-col md:flex-row justify-between items-center gap-4 shadow-md">
-            <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
-                📊 語言學習數據庫 (Excel 方格版)
-            </h1>
+        <header class="bg-emerald-700 text-white p-4 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-inner">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🟢</span>
+                <h1 class="text-lg font-bold tracking-wider">Language_Learning_Sheets.xlsx</h1>
+            </div>
             
-            <div class="flex items-center gap-3 bg-slate-700 px-4 py-2 rounded-xl border border-slate-600">
-                <label class="text-xs font-bold text-slate-300 whitespace-nowrap">🔍 方格大小調整：</label>
-                <input type="range" min="150" max="350" v-model="gridWidth" class="w-32 md:w-40 h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500">
-                <span class="text-xs font-mono bg-slate-900 px-2 py-0.5 rounded text-sky-400 font-bold">{{ gridWidth }}px</span>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-1.5 bg-emerald-800 px-3 py-1.5 rounded border border-emerald-600 text-xs">
+                    <span class="font-bold">👁️ 遮蓋眼罩：</span>
+                    <button @click="maskColumnA = !maskColumnA" :class="maskColumnA ? 'bg-amber-500 text-slate-900' : 'bg-emerald-600'" class="px-2 py-0.5 rounded font-medium transition-colors">
+                        {{ maskColumnA ? '已遮欄位 A' : '遮蓋欄位 A' }}
+                    </button>
+                    <button @click="maskColumnB = !maskColumnB" :class="maskColumnB ? 'bg-amber-500 text-slate-900' : 'bg-emerald-600'" class="px-2 py-0.5 rounded font-medium transition-colors">
+                        {{ maskColumnB ? '已遮欄位 B' : '遮蓋欄位 B' }}
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 bg-emerald-800 px-3 py-1.5 rounded border border-emerald-600 text-xs">
+                    <label class="font-bold text-emerald-200">🔍 字體與格子大小：</label>
+                    <input type="range" min="14" max="32" v-model="excelFontSize" class="w-24 h-1 bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-white">
+                    <span class="font-mono text-emerald-300 font-bold">{{ excelFontSize }}px</span>
+                </div>
             </div>
         </header>
 
-        <div class="px-6 py-4 flex gap-3 overflow-x-auto whitespace-nowrap bg-white border-b border-slate-100 items-center">
+        <div class="px-4 pt-3 flex gap-1 overflow-x-auto whitespace-nowrap bg-slate-200 border-b border-slate-300">
             <button v-for="category in categories" :key="category"
                     @click="selectedCategory = category"
-                    class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 shadow-sm border"
+                    class="px-4 py-2 text-xs font-bold border-t border-x rounded-t-lg transition-all duration-100"
                     :class="selectedCategory === category 
-                            ? 'bg-sky-600 text-white border-sky-600' 
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'">
-                {{ category }}
+                            ? 'bg-white text-emerald-700 border-slate-300 shadow-sm z-10' 
+                            : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-50'">
+                📊 {{ category }}
             </button>
-            
-            <button @click="showCategoryModal = true" 
-                    class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
+            <button @click="showCategoryModal = true" class="px-2 py-2 text-slate-500 hover:text-slate-800 font-bold text-xs">
+                ➕ 管理工作表
             </button>
         </div>
 
-        <main class="flex-1 p-6 overflow-y-auto">
-            
-            <div class="grid gap-2 justify-center" 
-                 :style="{ gridTemplateColumns: `repeat(auto-fill, ${gridWidth}px)` }">
-                 
-                <div v-for="card in filteredCards" :key="card.id" 
-                     class="border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200 relative group flex flex-col justify-between"
-                     :class="card.bgColor"
-                     :style="{ height: `${gridWidth * 0.75}px` }"> <button @click="removeCard(card.id)" class="absolute top-1.5 right-1.5 p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white/80 rounded-full shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-
-                    <div class="overflow-hidden" :style="{ fontSize: `${gridWidth / 15}px` }">
-                        <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200/60 text-slate-600 mb-1 border border-slate-300/40">
-                            {{ card.category }}
-                        </span>
-                        <h2 class="font-bold text-slate-800 leading-tight truncate" :title="card.zh">{{ card.zh }}</h2>
-                        <p class="text-sky-700 font-medium leading-tight mt-0.5 break-words" :style="{ fontSize: `${gridWidth / 17}px` }">{{ card.en }}</p>
-                    </div>
-
-                    <div class="flex justify-between items-center pt-2 border-t border-slate-200/60 mt-2">
-                        <span class="text-[10px] font-medium" :class="card.audioData ? 'text-emerald-600' : 'text-amber-500'">
-                            {{ card.audioData ? '🎵 有音檔' : '⚠️ 缺音檔' }}
-                        </span>
+        <main class="flex-1 p-2 overflow-x-auto overflow-y-auto bg-slate-50">
+            <table class="w-full border-collapse bg-white text-left shadow-sm border border-slate-300" :style="{ fontSize: `${excelFontSize}px` }">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-600 text-xs font-bold border-b border-slate-300 select-none">
+                        <th class="border border-slate-300 p-2 text-center w-12 bg-slate-200">編號</th>
+                        <th class="border border-slate-300 p-2 bg-slate-100 min-w-[200px]">
+                            欄位 A <span class="text-[10px] text-slate-400 font-normal">(雙擊可直接改字)</span>
+                        </th>
+                        <th class="border border-slate-300 p-2 bg-slate-100 min-w-[200px]">
+                            欄位 B <span class="text-[10px] text-slate-400 font-normal">(雙擊可直接改字)</span>
+                        </th>
+                        <th class="border border-slate-300 p-2 text-center w-20 bg-slate-100">發聲</th>
+                        <th class="border border-slate-300 p-2 text-center w-16 bg-slate-100">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(card, index) in filteredCards" :key="card.id" class="hover:bg-slate-50/80 transition-colors border-b border-slate-200">
+                        <td class="border border-slate-300 p-2 text-center bg-slate-50 text-xs text-slate-400 font-mono select-none">
+                            {{ index + 1 }}
+                        </td>
                         
-                        <button @click="playAudio(card)" 
-                                class="w-7 h-7 rounded flex items-center justify-center transition-colors shadow-sm border border-slate-200"
-                                :class="card.isPlaying ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-slate-600 hover:bg-slate-100'">
-                            <svg v-if="!card.isPlaying" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5">
-                                <path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd" />
-                            </svg>
-                            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5">
-                                <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75V5.25z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
+                        <td class="border border-slate-300 p-2 font-medium relative group" 
+                            :class="{ 'excel-masked': maskColumnA && !card.showA }"
+                            @click="card.showA = true">
+                            <input v-model="card.zh" type="text" 
+                                   class="w-full bg-transparent border-none focus:outline-none focus:bg-amber-50 rounded px-1 py-0.5 font-semibold text-slate-800"
+                                   :disabled="maskColumnA && !card.showA">
+                        </td>
+                        
+                        <td class="border border-slate-300 p-2 font-medium relative group"
+                            :class="{ 'excel-masked': maskColumnB && !card.showB }"
+                            @click="card.showB = true">
+                            <input v-model="card.en" type="text" 
+                                   class="w-full bg-transparent border-none focus:outline-none focus:bg-amber-50 rounded px-1 py-0.5 font-semibold text-slate-800"
+                                   :disabled="maskColumnB && !card.showB">
+                        </td>
+                        
+                        <td class="border border-slate-300 p-1 text-center select-none">
+                            <button @click="playAudio(card)" 
+                                    class="mx-auto w-8 h-8 rounded flex items-center justify-center border border-slate-200 transition-all shadow-sm"
+                                    :class="card.isPlaying ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'">
+                                <svg v-if="!card.isPlaying" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                    <path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd" />
+                                </svg>
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                                    <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75V5.25z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </td>
 
-            </div>
+                        <td class="border border-slate-300 p-1 text-center select-none">
+                            <button @click="removeCard(card.id)" class="text-slate-300 hover:text-red-500 p-1 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
-            <div v-if="filteredCards.length === 0" class="text-center text-slate-400 py-12">
-                此分類目前沒有方格資料。
+            <div v-if="filteredCards.length === 0" class="text-center text-slate-400 py-12 text-sm">
+                目前此工作表沒有任何資料列。
             </div>
             
-            <div class="mt-12 pt-6 border-t-2 border-slate-200 bg-slate-100/60 p-5 rounded-xl border">
-                <h3 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">➕ 插入新資料列 (必須附加 MP3)</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input v-model="newCard.zh" type="text" placeholder="中文名稱" class="p-2 bg-white border border-slate-300 rounded focus:outline-none focus:border-sky-500 text-sm">
-                    <input v-model="newCard.en" type="text" placeholder="英文翻譯" class="p-2 bg-white border border-slate-300 rounded focus:outline-none focus:border-sky-500 text-sm">
-                    
-                    <select v-model="newCard.category" class="p-2 bg-white border border-slate-300 rounded focus:outline-none focus:border-sky-500 text-sm">
-                        <option v-for="cat in categories.filter(c => c !== '全部')" :key="cat" :value="cat">📁 {{ cat }}</option>
-                    </select>
-                    
-                    <select v-model="newCard.bgColor" class="p-2 bg-white border border-slate-300 rounded focus:outline-none focus:border-sky-500 text-sm">
-                        <option value="bg-white">⚪ 白色方格</option>
-                        <option value="bg-sky-50">🔷 天藍方格</option>
-                        <option value="bg-emerald-50">🟢 淺綠方格</option>
-                        <option value="bg-rose-50">🔴 淺紅方格</option>
-                        <option value="bg-amber-50">🟡 淺黃方格</option>
-                    </select>
-                </div>
-
-                <div class="bg-white border border-slate-300 p-3 rounded mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div class="flex-1">
-                        <label class="block text-xs font-bold text-slate-400 mb-1">上傳專屬播放 MP3 檔案</label>
-                        <input type="file" accept="audio/mp3, audio/*" @change="handleAudioUpload" class="text-xs text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border file:border-slate-300 file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100">
+            <div class="mt-8 bg-slate-200/60 p-4 border border-slate-300 rounded-lg">
+                <h3 class="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">➕ 插入新資料列（需上傳 MP3 音檔）</h3>
+                <div class="flex flex-col md:flex-row gap-2 items-end">
+                    <div class="w-full md:flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input v-model="newCard.zh" type="text" placeholder="輸入欄位 A 內容" class="p-2 border border-slate-300 rounded text-sm bg-white">
+                        <input v-model="newCard.en" type="text" placeholder="輸入欄位 B 內容" class="p-2 border border-slate-300 rounded text-sm bg-white">
+                        <select v-model="newCard.category" class="p-2 border border-slate-300 rounded text-sm bg-white font-medium text-slate-700">
+                            <option v-for="cat in categories.filter(c => c !== '全部')" :key="cat" :value="cat">工作表: {{ cat }}</option>
+                        </select>
                     </div>
-                    <p v-if="uploadStatus" class="text-xs text-sky-600 font-medium whitespace-nowrap">{{ uploadStatus }}</p>
                 </div>
 
-                <button @click="addNewCard" class="w-full bg-slate-800 text-white p-2.5 rounded font-bold hover:bg-slate-700 transition-colors shadow mt-3 text-sm">
-                    確認插入方格資料
+                <div class="mt-3 p-2 bg-white rounded border border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex-1">
+                        <label class="block text-[11px] font-bold text-slate-400 mb-0.5">選擇要綁定的 MP3 音檔：</label>
+                        <input type="file" accept="audio/mp3, audio/*" @change="handleAudioUpload" class="text-xs text-slate-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border file:border-slate-300 file:bg-slate-50 file:text-xs hover:file:bg-slate-100">
+                    </div>
+                    <p v-if="uploadStatus" class="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">{{ uploadStatus }}</p>
+                </div>
+
+                <button @click="addNewCard" class="w-full bg-emerald-700 text-white p-2 rounded font-bold hover:bg-emerald-600 transition-colors shadow mt-3 text-xs">
+                    插入此列
                 </button>
             </div>
-
         </main>
 
         <div v-if="showCategoryModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border">
-                <div class="p-4 bg-slate-800 text-white flex justify-between items-center">
-                    <h3 class="font-bold text-sm">📁 分類活頁簿管理</h3>
+            <div class="bg-white rounded-lg w-full max-w-sm overflow-hidden shadow-2xl border border-slate-300">
+                <div class="p-3 bg-slate-800 text-white flex justify-between items-center select-none">
+                    <h3 class="font-bold text-xs">📁 管理 Excel 工作表 分類</h3>
                     <button @click="showCategoryModal = false" class="text-slate-400 hover:text-white">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -135,18 +165,17 @@
                 
                 <div class="p-4 space-y-4">
                     <div class="flex gap-2">
-                        <input v-model="newCategoryName" @keyup.enter="addCategory" type="text" placeholder="新分類名稱..." class="flex-1 p-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-sky-500">
-                        <button @click="addCategory" class="px-4 py-2 bg-sky-600 text-white rounded text-sm font-medium hover:bg-sky-700">建立</button>
+                        <input v-model="newCategoryName" @keyup.enter="addCategory" type="text" placeholder="新分類名稱..." class="flex-1 p-2 border border-slate-300 rounded text-xs focus:outline-none focus:border-emerald-600">
+                        <button @click="addCategory" class="px-3 py-1 bg-emerald-700 text-white rounded text-xs font-bold hover:bg-emerald-600">新增</button>
                     </div>
                     
                     <div>
-                        <h4 class="text-[11px] font-bold text-slate-400 mb-2 uppercase">現有欄位分類</h4>
-                        <ul class="space-y-1.5 max-h-40 overflow-y-auto">
-                            <li v-for="category in categories" :key="category" class="flex justify-between items-center p-2 rounded text-sm" :class="category === '全部' ? 'bg-slate-50 text-slate-400' : 'bg-slate-100 text-slate-700'">
-                                <span class="font-medium">{{ category }}</span>
+                        <h4 class="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">現有工作表清單</h4>
+                        <ul class="space-y-1 max-h-40 overflow-y-auto">
+                            <li v-for="category in categories" :key="category" class="flex justify-between items-center p-2 rounded text-xs" :class="category === '全部' ? 'bg-slate-50 text-slate-400' : 'bg-slate-100 text-slate-700'">
+                                <span class="font-bold">{{ category }}</span>
                                 <button v-if="category !== '全部'" @click="removeCategory(category)" class="text-red-400 hover:text-red-600 p-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                                </button>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></button>
                             </li>
                         </ul>
                     </div>
@@ -157,7 +186,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed } = Vue;
+        const { createApp, ref, computed, watch } = Vue;
 
         createApp({
             setup() {
@@ -166,19 +195,31 @@
                 const showCategoryModal = ref(false);
                 const newCategoryName = ref('');
 
-                // 【大小調整狀態】預設方格寬度為 200px
-                const gridWidth = ref(200);
+                // 自由調整 Excel 字體大小樣式 (預設 16px)
+                const excelFontSize = ref(16);
 
-                const newCard = ref({ zh: '', en: '', category: '日常溝通', bgColor: 'bg-white' });
+                // 欄位遮蓋開關狀態
+                const maskColumnA = ref(false);
+                const maskColumnB = ref(false);
+
+                const newCard = ref({ zh: '', en: '', category: '日常溝通' });
                 const tempAudioData = ref('');
                 const uploadStatus = ref('');
 
-                // 初始範例方格資料
+                // 初始 Excel 欄位資料 (不限中英文左右，字體大小高度一致)
                 const cards = ref([
-                    { id: 1, zh: '我該如何回覆？', en: 'How should I respond?', category: '日常溝通', bgColor: 'bg-white', audioData: '', isPlaying: false },
-                    { id: 2, zh: '這個放哪裡？', en: 'Where should I put this?', category: '日常溝通', bgColor: 'bg-sky-50', audioData: '', isPlaying: false },
-                    { id: 3, zh: '粗蛋白質', en: 'Crude Protein', category: '貓咪飲食', bgColor: 'bg-emerald-50', audioData: '', isPlaying: false }
+                    { id: 1, zh: '我該如何回覆？', en: 'How should I respond?', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false },
+                    { id: 2, zh: '這個放哪裡？', en: 'Where should I put this?', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false },
+                    { id: 3, zh: '粗蛋白質', en: 'Crude Protein', category: '貓咪飲食', audioData: '', isPlaying: false, showA: false, showB: false }
                 ]);
+
+                // 當遮蓋總開關切換時，重設單格的點擊顯現狀態
+                watch([maskColumnA, maskColumnB], () => {
+                    cards.value.forEach(c => {
+                        c.showA = false;
+                        c.showB = false;
+                    });
+                });
 
                 const filteredCards = computed(() => {
                     if (selectedCategory.value === '全部') return cards.value;
@@ -194,7 +235,7 @@
                     
                     reader.onload = (e) => {
                         tempAudioData.value = e.target.result;
-                        uploadStatus.value = `✅ 成功`;
+                        uploadStatus.value = `💾 ${file.name.substring(0, 10)}...`;
                     };
                     reader.readAsDataURL(file);
                 };
@@ -209,7 +250,7 @@
                 };
 
                 const removeCategory = (catToRemove) => {
-                    if (confirm(`確定刪除「${catToRemove}」分類？`)) {
+                    if (confirm(`確定刪除「${catToRemove}」工作表分類？`)) {
                         categories.value = categories.value.filter(c => c !== catToRemove);
                         if (selectedCategory.value === catToRemove) selectedCategory.value = '全部';
                     }
@@ -217,11 +258,11 @@
 
                 const addNewCard = () => {
                     if (!newCard.value.zh || !newCard.value.en) {
-                        alert('請填寫中英文！');
+                        alert('請輸入欄位 A 與欄位 B 的內容！');
                         return;
                     }
                     if (!tempAudioData.value) {
-                        alert('必須選取並上傳 MP3 音檔！');
+                        alert('必須選取並上傳對應的 MP3 音檔！');
                         return;
                     }
 
@@ -230,9 +271,10 @@
                         zh: newCard.value.zh,
                         en: newCard.value.en,
                         category: newCard.value.category,
-                        bgColor: newCard.value.bgColor,
                         audioData: tempAudioData.value, 
-                        isPlaying: false
+                        isPlaying: false,
+                        showA: false,
+                        showB: false
                     });
 
                     newCard.value.zh = '';
@@ -245,9 +287,7 @@
                 };
 
                 const removeCard = (id) => {
-                    if (confirm('確認刪除此方格？')) {
-                        cards.value = cards.value.filter(c => c.id !== id);
-                    }
+                    cards.value = cards.value.filter(c => c.id !== id);
                 };
 
                 let currentAudio = null;
@@ -268,7 +308,7 @@
                     if (activeCard) activeCard.isPlaying = false;
 
                     if (!card.audioData) {
-                        alert('此方格無內嵌 MP3，請上傳新方格測試！');
+                        alert('此列無內嵌 MP3 音檔！');
                         return;
                     }
 
@@ -291,7 +331,7 @@
                     cards, categories, selectedCategory, filteredCards, playAudio,
                     showCategoryModal, newCategoryName, addCategory, removeCategory,
                     newCard, addNewCard, removeCard, handleAudioUpload, uploadStatus,
-                    gridWidth
+                    excelFontSize, maskColumnA, maskColumnB
                 };
             }
         }).mount('#app');
