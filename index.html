@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>語言學習試算表 (Excel 自由版)</title>
+    <title>語言學習試算表 (Excel 儲存同步版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans TC', sans-serif; background-color: #f1f5f9; }
         ::-webkit-scrollbar { display: none; }
-        /* Excel 遮蓋樣式 */
         .excel-masked {
             background-color: #1e293b !important;
             color: #1e293b !important;
@@ -29,23 +28,36 @@
         <header class="bg-emerald-700 text-white p-4 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-inner">
             <div class="flex items-center gap-2">
                 <span class="text-2xl">🟢</span>
-                <h1 class="text-lg font-bold tracking-wider">Language_Learning_Sheets.xlsx</h1>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wider">Language_Learning_Sheets.xlsx</h1>
+                    <p class="text-[10px] text-emerald-200">✨ 內建自動存檔功能</p>
+                </div>
             </div>
             
-            <div class="flex flex-wrap items-center gap-3">
+            <div class="flex flex-wrap items-center justify-center lg:justify-end gap-3">
                 <div class="flex items-center gap-1.5 bg-emerald-800 px-3 py-1.5 rounded border border-emerald-600 text-xs">
-                    <span class="font-bold">👁️ 遮蓋眼罩：</span>
+                    <span class="font-bold">💾 資料同步：</span>
+                    <button @click="exportData" class="bg-blue-600 hover:bg-blue-500 px-2.5 py-1 rounded font-bold transition-colors">
+                        📤 匯出備份檔
+                    </button>
+                    <label class="bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1 rounded font-bold transition-colors cursor-pointer">
+                        📥 匯入同步檔
+                        <input type="file" accept=".json" @change="importData" class="hidden">
+                    </label>
+                </div>
+
+                <div class="flex items-center gap-1.5 bg-emerald-800 px-3 py-1.5 rounded border border-emerald-600 text-xs">
+                    <span class="font-bold">👁️ 遮蓋：</span>
                     <button @click="maskColumnA = !maskColumnA" :class="maskColumnA ? 'bg-amber-500 text-slate-900' : 'bg-emerald-600'" class="px-2 py-0.5 rounded font-medium transition-colors">
-                        {{ maskColumnA ? '已遮欄位 A' : '遮蓋欄位 A' }}
+                        欄位 A
                     </button>
                     <button @click="maskColumnB = !maskColumnB" :class="maskColumnB ? 'bg-amber-500 text-slate-900' : 'bg-emerald-600'" class="px-2 py-0.5 rounded font-medium transition-colors">
-                        {{ maskColumnB ? '已遮欄位 B' : '遮蓋欄位 B' }}
+                        欄位 B
                     </button>
                 </div>
 
                 <div class="flex items-center gap-2 bg-emerald-800 px-3 py-1.5 rounded border border-emerald-600 text-xs">
-                    <label class="font-bold text-emerald-200">🔍 字體與格子大小：</label>
-                    <input type="range" min="14" max="32" v-model="excelFontSize" class="w-24 h-1 bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-white">
+                    <input type="range" min="14" max="32" v-model="excelFontSize" class="w-20 h-1 bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-white">
                     <span class="font-mono text-emerald-300 font-bold">{{ excelFontSize }}px</span>
                 </div>
             </div>
@@ -70,12 +82,8 @@
                 <thead>
                     <tr class="bg-slate-100 text-slate-600 text-xs font-bold border-b border-slate-300 select-none">
                         <th class="border border-slate-300 p-2 text-center w-12 bg-slate-200">編號</th>
-                        <th class="border border-slate-300 p-2 bg-slate-100 min-w-[200px]">
-                            欄位 A <span class="text-[10px] text-slate-400 font-normal">(雙擊可直接改字)</span>
-                        </th>
-                        <th class="border border-slate-300 p-2 bg-slate-100 min-w-[200px]">
-                            欄位 B <span class="text-[10px] text-slate-400 font-normal">(雙擊可直接改字)</span>
-                        </th>
+                        <th class="border border-slate-300 p-2 bg-slate-100 min-w-[200px]">欄位 A <span class="text-[10px] text-slate-400 font-normal">(雙擊修改)</span></th>
+                        <th class="border border-slate-300 p-2 bg-slate-100 min-w-[200px]">欄位 B <span class="text-[10px] text-slate-400 font-normal">(雙擊修改)</span></th>
                         <th class="border border-slate-300 p-2 text-center w-20 bg-slate-100">發聲</th>
                         <th class="border border-slate-300 p-2 text-center w-16 bg-slate-100">操作</th>
                     </tr>
@@ -86,18 +94,18 @@
                             {{ index + 1 }}
                         </td>
                         
-                        <td class="border border-slate-300 p-2 font-medium relative group" 
+                        <td class="border border-slate-300 p-2 font-medium relative" 
                             :class="{ 'excel-masked': maskColumnA && !card.showA }"
                             @click="card.showA = true">
-                            <input v-model="card.zh" type="text" 
+                            <input v-model="card.zh" type="text" @change="saveToLocalStorage"
                                    class="w-full bg-transparent border-none focus:outline-none focus:bg-amber-50 rounded px-1 py-0.5 font-semibold text-slate-800"
                                    :disabled="maskColumnA && !card.showA">
                         </td>
                         
-                        <td class="border border-slate-300 p-2 font-medium relative group"
+                        <td class="border border-slate-300 p-2 font-medium relative"
                             :class="{ 'excel-masked': maskColumnB && !card.showB }"
                             @click="card.showB = true">
-                            <input v-model="card.en" type="text" 
+                            <input v-model="card.en" type="text" @change="saveToLocalStorage"
                                    class="w-full bg-transparent border-none focus:outline-none focus:bg-amber-50 rounded px-1 py-0.5 font-semibold text-slate-800"
                                    :disabled="maskColumnB && !card.showB">
                         </td>
@@ -130,20 +138,18 @@
             
             <div class="mt-8 bg-slate-200/60 p-4 border border-slate-300 rounded-lg">
                 <h3 class="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">➕ 插入新資料列（需上傳 MP3 音檔）</h3>
-                <div class="flex flex-col md:flex-row gap-2 items-end">
-                    <div class="w-full md:flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <input v-model="newCard.zh" type="text" placeholder="輸入欄位 A 內容" class="p-2 border border-slate-300 rounded text-sm bg-white">
-                        <input v-model="newCard.en" type="text" placeholder="輸入欄位 B 內容" class="p-2 border border-slate-300 rounded text-sm bg-white">
-                        <select v-model="newCard.category" class="p-2 border border-slate-300 rounded text-sm bg-white font-medium text-slate-700">
-                            <option v-for="cat in categories.filter(c => c !== '全部')" :key="cat" :value="cat">工作表: {{ cat }}</option>
-                        </select>
-                    </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input v-model="newCard.zh" type="text" placeholder="輸入欄位 A 內容" class="p-2 border border-slate-300 rounded text-sm bg-white">
+                    <input v-model="newCard.en" type="text" placeholder="輸入欄位 B 內容" class="p-2 border border-slate-300 rounded text-sm bg-white">
+                    <select v-model="newCard.category" class="p-2 border border-slate-300 rounded text-sm bg-white font-medium text-slate-700">
+                        <option v-for="cat in categories.filter(c => c !== '全部')" :key="cat" :value="cat">工作表: {{ cat }}</option>
+                    </select>
                 </div>
 
                 <div class="mt-3 p-2 bg-white rounded border border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div class="flex-1">
                         <label class="block text-[11px] font-bold text-slate-400 mb-0.5">選擇要綁定的 MP3 音檔：</label>
-                        <input type="file" accept="audio/mp3, audio/*" @change="handleAudioUpload" class="text-xs text-slate-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border file:border-slate-300 file:bg-slate-50 file:text-xs hover:file:bg-slate-100">
+                        <input type="file" accept="audio/mp3, audio/*" @change="handleAudioUpload" class="text-xs text-slate-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border file:border-slate-300 file:bg-slate-50 text-xs hover:file:bg-slate-100">
                     </div>
                     <p v-if="uploadStatus" class="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded">{{ uploadStatus }}</p>
                 </div>
@@ -156,23 +162,20 @@
 
         <div v-if="showCategoryModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-lg w-full max-w-sm overflow-hidden shadow-2xl border border-slate-300">
-                <div class="p-3 bg-slate-800 text-white flex justify-between items-center select-none">
+                <div class="p-3 bg-slate-800 text-white flex justify-between items-center">
                     <h3 class="font-bold text-xs">📁 管理 Excel 工作表 分類</h3>
                     <button @click="showCategoryModal = false" class="text-slate-400 hover:text-white">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
-                
                 <div class="p-4 space-y-4">
                     <div class="flex gap-2">
-                        <input v-model="newCategoryName" @keyup.enter="addCategory" type="text" placeholder="新分類名稱..." class="flex-1 p-2 border border-slate-300 rounded text-xs focus:outline-none focus:border-emerald-600">
-                        <button @click="addCategory" class="px-3 py-1 bg-emerald-700 text-white rounded text-xs font-bold hover:bg-emerald-600">新增</button>
+                        <input v-model="newCategoryName" @keyup.enter="addCategory" type="text" placeholder="新分類名稱..." class="flex-1 p-2 border border-slate-300 rounded text-xs focus:outline-none">
+                        <button @click="addCategory" class="px-3 py-1 bg-emerald-700 text-white rounded text-xs font-bold">新增</button>
                     </div>
-                    
                     <div>
-                        <h4 class="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">現有工作表清單</h4>
                         <ul class="space-y-1 max-h-40 overflow-y-auto">
-                            <li v-for="category in categories" :key="category" class="flex justify-between items-center p-2 rounded text-xs" :class="category === '全部' ? 'bg-slate-50 text-slate-400' : 'bg-slate-100 text-slate-700'">
+                            <li v-for="category in categories" :key="category" class="flex justify-between items-center p-2 rounded text-xs bg-slate-100 text-slate-700">
                                 <span class="font-bold">{{ category }}</span>
                                 <button v-if="category !== '全部'" @click="removeCategory(category)" class="text-red-400 hover:text-red-600 p-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></button>
@@ -186,7 +189,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, watch } = Vue;
+        const { createApp, ref, computed, watch, onMounted } = Vue;
 
         createApp({
             setup() {
@@ -194,31 +197,85 @@
                 const selectedCategory = ref('全部');
                 const showCategoryModal = ref(false);
                 const newCategoryName = ref('');
-
-                // 自由調整 Excel 字體大小樣式 (預設 16px)
                 const excelFontSize = ref(16);
-
-                // 欄位遮蓋開關狀態
                 const maskColumnA = ref(false);
                 const maskColumnB = ref(false);
 
                 const newCard = ref({ zh: '', en: '', category: '日常溝通' });
                 const tempAudioData = ref('');
                 const uploadStatus = ref('');
+                const cards = ref([]);
 
-                // 初始 Excel 欄位資料 (不限中英文左右，字體大小高度一致)
-                const cards = ref([
-                    { id: 1, zh: '我該如何回覆？', en: 'How should I respond?', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false },
-                    { id: 2, zh: '這個放哪裡？', en: 'Where should I put this?', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false },
-                    { id: 3, zh: '粗蛋白質', en: 'Crude Protein', category: '貓咪飲食', audioData: '', isPlaying: false, showA: false, showB: false }
-                ]);
+                // 【自動存檔機制】將目前資料儲存至本地瀏覽器
+                const saveToLocalStorage = () => {
+                    const dataToSave = {
+                        categories: categories.value,
+                        cards: cards.value
+                    };
+                    localStorage.setItem('excel_app_data', JSON.stringify(dataToSave));
+                };
 
-                // 當遮蓋總開關切換時，重設單格的點擊顯現狀態
-                watch([maskColumnA, maskColumnB], () => {
-                    cards.value.forEach(c => {
-                        c.showA = false;
-                        c.showB = false;
+                // 【網頁載入時】自動讀取上次的進度
+                onMounted(() => {
+                    const saved = localStorage.getItem('excel_app_data');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed.categories) categories.value = parsed.categories;
+                            if (parsed.cards) cards.value = parsed.cards;
+                        } catch (e) {
+                            console.error("讀取存檔失敗", e);
+                        }
+                    } else {
+                        // 首次完全無存檔時的預設範例
+                        cards.value = [
+                            { id: 1, zh: '我該如何回覆？', en: 'How should I respond?', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false }
+                        ];
+                    }
+                });
+
+                // 【核心：匯出備份檔】
+                const exportData = () => {
+                    const dataStr = JSON.stringify({
+                        categories: categories.value,
+                        cards: cards.value
                     });
+                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                    
+                    const exportFileDefaultName = 'Language_Learning_Backup.json';
+                    
+                    const linkElement = document.createElement('a');
+                    linkElement.setAttribute('href', dataUri);
+                    linkElement.setAttribute('download', exportFileDefaultName);
+                    linkElement.click();
+                };
+
+                // 【核心：匯入同步檔】
+                const importData = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const imported = JSON.parse(e.target.result);
+                            if (imported.categories && imported.cards) {
+                                categories.value = imported.categories;
+                                cards.value = imported.cards;
+                                saveToLocalStorage(); // 匯入後立刻覆蓋本地存檔
+                                alert('📊 同步成功！已載入所有工作表資料與音檔。');
+                            } else {
+                                alert('檔案格式不正確，無法匯入！');
+                            }
+                        } catch (err) {
+                            alert('讀取備份檔失敗！');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+
+                watch([maskColumnA, maskColumnB], () => {
+                    cards.value.forEach(c => { c.showA = false; c.showB = false; });
                 });
 
                 const filteredCards = computed(() => {
@@ -229,13 +286,11 @@
                 const handleAudioUpload = (event) => {
                     const file = event.target.files[0];
                     if (!file) return;
-
                     uploadStatus.value = '讀取中...';
                     const reader = new FileReader();
-                    
                     reader.onload = (e) => {
                         tempAudioData.value = e.target.result;
-                        uploadStatus.value = `💾 ${file.name.substring(0, 10)}...`;
+                        uploadStatus.value = `💾 已就緒`;
                     };
                     reader.readAsDataURL(file);
                 };
@@ -246,6 +301,7 @@
                         categories.value.push(name);
                         newCard.value.category = name;
                         newCategoryName.value = '';
+                        saveToLocalStorage();
                     }
                 };
 
@@ -253,16 +309,17 @@
                     if (confirm(`確定刪除「${catToRemove}」工作表分類？`)) {
                         categories.value = categories.value.filter(c => c !== catToRemove);
                         if (selectedCategory.value === catToRemove) selectedCategory.value = '全部';
+                        saveToLocalStorage();
                     }
                 };
 
                 const addNewCard = () => {
                     if (!newCard.value.zh || !newCard.value.en) {
-                        alert('請輸入欄位 A 與欄位 B 的內容！');
+                        alert('請輸入欄位 A 與欄位 B！');
                         return;
                     }
                     if (!tempAudioData.value) {
-                        alert('必須選取並上傳對應的 MP3 音檔！');
+                        alert('必須上傳 MP3 音檔！');
                         return;
                     }
 
@@ -272,9 +329,7 @@
                         en: newCard.value.en,
                         category: newCard.value.category,
                         audioData: tempAudioData.value, 
-                        isPlaying: false,
-                        showA: false,
-                        showB: false
+                        isPlaying: false, showA: false, showB: false
                     });
 
                     newCard.value.zh = '';
@@ -284,54 +339,37 @@
                     
                     const fileInput = document.querySelector('input[type="file"]');
                     if (fileInput) fileInput.value = '';
+                    
+                    saveToLocalStorage(); // 儲存到瀏覽器
                 };
 
                 const removeCard = (id) => {
-                    cards.value = cards.value.filter(c => c.id !== id);
+                    if(confirm('確定刪除此列？')) {
+                        cards.value = cards.value.filter(c => c.id !== id);
+                        saveToLocalStorage();
+                    }
                 };
 
                 let currentAudio = null;
                 let activeCard = null;
 
                 const playAudio = (card) => {
-                    if (currentAudio) {
-                        currentAudio.pause();
-                        currentAudio.currentTime = 0;
-                    }
-
-                    if (activeCard === card && card.isPlaying) {
-                        card.isPlaying = false;
-                        activeCard = null;
-                        return;
-                    }
-
+                    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+                    if (activeCard === card && card.isPlaying) { card.isPlaying = false; activeCard = null; return; }
                     if (activeCard) activeCard.isPlaying = false;
+                    if (!card.audioData) { alert('此列無音檔！'); return; }
 
-                    if (!card.audioData) {
-                        alert('此列無內嵌 MP3 音檔！');
-                        return;
-                    }
-
-                    activeCard = card;
-                    card.isPlaying = true;
-
+                    activeCard = card; card.isPlaying = true;
                     currentAudio = new Audio(card.audioData);
-                    currentAudio.play().catch(err => {
-                        card.isPlaying = false;
-                        activeCard = null;
-                    });
-
-                    currentAudio.onended = () => {
-                        card.isPlaying = false;
-                        activeCard = null;
-                    };
+                    currentAudio.play().catch(err => { card.isPlaying = false; activeCard = null; });
+                    currentAudio.onended = () => { card.isPlaying = false; activeCard = null; };
                 };
 
                 return { 
                     cards, categories, selectedCategory, filteredCards, playAudio,
                     showCategoryModal, newCategoryName, addCategory, removeCategory,
                     newCard, addNewCard, removeCard, handleAudioUpload, uploadStatus,
-                    excelFontSize, maskColumnA, maskColumnB
+                    excelFontSize, maskColumnA, maskColumnB, exportData, importData, saveToLocalStorage
                 };
             }
         }).mount('#app');
