@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的語言學習 App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f4f4f5; margin: 0; }
+        ::-webkit-scrollbar { display: none; }
+        .app-container { max-width: 480px; margin: 0 auto; background-color: #ffffff; min-height: 100vh; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.05); }
+        .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        textarea { overflow: hidden; transition: box-shadow 0.2s, background-color 0.2s; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="app-container flex flex-col h-screen overflow-hidden relative">
+        
+        <header class="glass-header sticky top-0 z-30 px-5 pt-6 pb-4 border-b border-zinc-100">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-xl font-bold text-zinc-900 tracking-wide">學習字卡</h1>
+                <button @click="showSettingsModal = true" class="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-50 text-zinc-600 hover:bg-zinc-100 transition-colors border border-zinc-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.341 3.612l.1-1.043a1.5 1.5 0 012.983 0l.1 1.043a1.5 1.5 0 001.378 1.258l1.042.1a1.5 1.5 0 011.026 2.652l-.84.7a1.5 1.5 0 00-.472 1.631l.36 1.01a1.5 1.5 0 01-2.28 1.662l-.93-.497a1.5 1.5 0 00-1.4 0l-.93.497a1.5 1.5 0 01-2.28-1.662l.36-1.01a1.5 1.5 0 00-.472-1.631l-.84-.7a1.5 1.5 0 011.026-2.652l1.042-.1a1.5 1.5 0 001.378-1.258z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
+
+            <div class="flex gap-2 bg-zinc-100 p-1.5 rounded-xl">
+                <button @click="maskColumnA = !maskColumnA" class="flex-1 py-1.5 rounded-lg text-sm font-bold transition-all duration-300" :class="maskColumnA ? 'bg-zinc-900 text-white shadow-sm' : 'bg-transparent text-zinc-500 hover:text-zinc-700'">
+                    {{ maskColumnA ? '👁️ 已遮欄 A' : '遮蓋欄 A' }}
+                </button>
+                <button @click="maskColumnB = !maskColumnB" class="flex-1 py-1.5 rounded-lg text-sm font-bold transition-all duration-300" :class="maskColumnB ? 'bg-zinc-900 text-white shadow-sm' : 'bg-transparent text-zinc-500 hover:text-zinc-700'">
+                    {{ maskColumnB ? '👁️ 已遮欄 B' : '遮蓋欄 B' }}
+                </button>
+            </div>
+        </header>
+
+        <div class="px-5 py-3 flex gap-2 overflow-x-auto whitespace-nowrap bg-white border-b border-zinc-100 shrink-0 z-20">
+            <button v-for="category in categories" :key="category"
+                    @click="selectedCategory = category"
+                    class="px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-300 border"
+                    :class="selectedCategory === category ? 'bg-zinc-900 text-white border-zinc-900 shadow-md' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300'">
+                {{ category }}
+            </button>
+            <button @click="showCategoryModal = true" class="px-3 py-1.5 rounded-full text-sm font-bold bg-zinc-50 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 flex items-center gap-1 border border-zinc-200 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                管理
+            </button>
+        </div>
+
+        <main class="flex-1 overflow-y-auto p-5 pb-36 space-y-5">
+            
+            <div v-for="(card, index) in filteredCards" :key="card.id" class="bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-zinc-100 relative group transition-all">
+                
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-[11px] font-bold text-zinc-400 bg-zinc-100/80 px-2.5 py-1 rounded-md tracking-wider">
+                        #{{ index + 1 }}
+                    </span>
+                    
+                    <div class="flex gap-2 items-center">
+                        <button @click="triggerAudioReplace(card)" class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors" title="更換/補傳 MP3">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                        </button>
+                        
+                        <button @click="removeCard(card.id)" class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-300 hover:bg-red-50 hover:text-red-500 transition-colors" title="刪除字卡">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                        <button @click="playAudio(card)" class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border"
+                                :class="card.isPlaying ? 'bg-zinc-900 border-zinc-900 text-white scale-110 shadow-md' : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'">
+                            <svg v-if="!card.isPlaying" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 ml-0.5"><path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd" /></svg>
+                            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75V5.25z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <div class="relative w-full">
+                        <div v-if="maskColumnA && !card.showA" @click="card.showA = true" class="absolute inset-0 bg-zinc-900 rounded-xl flex items-center justify-center cursor-pointer z-10 shadow-inner backdrop-blur-sm">
+                            <span class="text-white text-xs font-bold tracking-widest opacity-90">點擊查看</span>
+                        </div>
+                        <textarea v-model="card.zh" @change="saveToLocalStorage" @input="resizeTextarea"
+                                  class="w-full bg-zinc-50/50 border border-zinc-200 rounded-xl p-3.5 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-all font-medium text-zinc-800 placeholder-zinc-300" 
+                                  :style="{ fontSize: `${excelFontSize}px`, lineHeight: '1.6' }" placeholder="欄位 A (中文)..."></textarea>
+                    </div>
+                    
+                    <div class="relative w-full">
+                        <div v-if="maskColumnB && !card.showB" @click="card.showB = true" class="absolute inset-0 bg-zinc-900 rounded-xl flex items-center justify-center cursor-pointer z-10 shadow-inner backdrop-blur-sm">
+                            <span class="text-white text-xs font-bold tracking-widest opacity-90">點擊查看</span>
+                        </div>
+                        <textarea v-model="card.en" @change="saveToLocalStorage" @input="resizeTextarea"
+                                  class="w-full bg-zinc-50/50 border border-zinc-200 rounded-xl p-3.5 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-all font-medium text-zinc-800 placeholder-zinc-300" 
+                                  :style="{ fontSize: `${excelFontSize}px`, lineHeight: '1.6' }" placeholder="欄位 B (英文)..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="filteredCards.length === 0" class="flex flex-col items-center justify-center py-24 opacity-60">
+                <div class="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-zinc-400"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <p class="text-zinc-500 font-medium">此分類目前沒有{{ activeTab }}</p>
+            </div>
+        </main>
+
+        <input type="file" accept="audio/*" ref="hiddenFileInput" class="hidden" @change="handleAudioReplace">
+
+        <div class="absolute bottom-24 right-6 z-40">
+            <button @click="openAddModal" class="w-14 h-14 bg-zinc-900 text-white rounded-full shadow-[0_10px_25px_rgba(24,24,27,0.3)] flex items-center justify-center hover:scale-105 hover:bg-zinc-800 active:scale-95 transition-all duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </button>
+        </div>
+
+        <nav class="absolute bottom-0 w-full bg-white border-t border-zinc-100 flex z-30 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+            <button @click="activeTab = '單字'" class="flex-1 py-3.5 flex flex-col items-center gap-1.5 transition-colors" :class="activeTab === '單字' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c1.68 0 3.282.466 4.75 1.281a.75.75 0 001-.707V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0020 3a9.707 9.707 0 00-5.25 1.533v16.103z" /></svg>
+                <span class="text-[11px] font-bold">單字庫</span>
+            </button>
+            <button @click="activeTab = '句子'" class="flex-1 py-3.5 flex flex-col items-center gap-1.5 transition-colors" :class="activeTab === '句子' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clip-rule="evenodd" /></svg>
+                <span class="text-[11px] font-bold">實用句子</span>
+            </button>
+        </nav>
+
+        <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/60 backdrop-blur-sm p-0 sm:p-4 transition-opacity">
+            <div class="bg-white w-full max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden animate-[slideUp_0.4s_cubic-bezier(0.16,1,0.3,1)]">
+                <div class="p-5 border-b border-zinc-100 flex justify-between items-center bg-white">
+                    <h3 class="font-bold text-zinc-900 flex items-center gap-2">新增學習卡</h3>
+                    <button @click="showAddModal = false" class="w-8 h-8 rounded-full bg-zinc-100 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div class="flex gap-2 bg-zinc-100 p-1 rounded-xl">
+                        <button @click="newCard.tab = '單字'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-300" :class="newCard.tab === '單字' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'">存入【單字】</button>
+                        <button @click="newCard.tab = '句子'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-300" :class="newCard.tab === '句子' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'">存入【句子】</button>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <textarea v-model="newCard.zh" rows="2" placeholder="輸入中文意思..." class="w-full p-3.5 bg-zinc-50/50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-medium text-zinc-800 placeholder-zinc-400 transition-all resize-none"></textarea>
+                        <textarea v-model="newCard.en" rows="2" placeholder="輸入外文/英文內容..." class="w-full p-3.5 bg-zinc-50/50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-medium text-zinc-800 placeholder-zinc-400 transition-all resize-none"></textarea>
+                    </div>
+                    
+                    <div class="relative">
+                        <select v-model="newCard.category" class="w-full p-3.5 bg-zinc-50/50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-medium text-zinc-700 appearance-none transition-all">
+                            <option v-for="cat in categories.filter(c => c !== '全部')" :key="cat" :value="cat">歸類於：{{ cat }}</option>
+                        </select>
+                        <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                        </div>
+                    </div>
+                    
+                    <div class="border-2 border-dashed border-zinc-200 p-5 rounded-xl text-center relative hover:border-zinc-400 transition-colors bg-zinc-50/50">
+                        <input type="file" accept="audio/*" @change="handleAudioUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <div v-if="!uploadStatus" class="pointer-events-none text-zinc-500 flex flex-col items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+                            <span class="text-sm font-bold text-zinc-600 mt-1">上傳 MP3 (限制 1.5MB 內)</span>
+                            <span class="text-[11px] text-zinc-400">不上傳則自動使用 AI 語音朗讀</span>
+                        </div>
+                        <div v-else class="pointer-events-none text-zinc-900 font-bold flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clip-rule="evenodd" /></svg>
+                            {{ uploadStatus }}
+                        </div>
+                    </div>
+
+                    <button @click="addNewCard" class="w-full bg-zinc-900 text-white py-3.5 rounded-xl font-bold text-base hover:bg-zinc-800 shadow-lg active:scale-[0.98] transition-all">
+                        確認並加入
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="showSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm p-5">
+            <div class="bg-white rounded-3xl w-full max-w-xs shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+                <div class="p-5 bg-zinc-900 text-white flex justify-between items-center">
+                    <h3 class="font-bold tracking-wide">設定與備份</h3>
+                    <button @click="showSettingsModal = false" class="text-zinc-400 hover:text-white transition-colors"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="block text-sm font-bold text-zinc-500 mb-3">字體大小：<span class="text-zinc-900">{{ excelFontSize }}px</span></label>
+                        <input type="range" min="14" max="32" v-model="excelFontSize" @input="forceResizeAll" class="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-zinc-900">
+                    </div>
+                    <div class="pt-4 border-t border-zinc-100 space-y-3">
+                        <label class="block text-sm font-bold text-zinc-500 mb-2">資料管理</label>
+                        <button @click="exportData" class="w-full bg-white text-zinc-700 border border-zinc-200 py-2.5 rounded-xl font-semibold hover:bg-zinc-50 transition-colors flex items-center justify-center gap-2">匯出備份檔</button>
+                        <label class="w-full bg-zinc-900 text-white border border-zinc-900 py-2.5 rounded-xl font-semibold hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                            匯入同步檔
+                            <input type="file" accept=".json" @change="importData" class="hidden">
+                        </label>
+                    </div>
+                    <div class="pt-4 border-t border-zinc-100 space-y-3">
+                        <label class="block text-sm font-bold text-zinc-500 mb-2">系統重置</label>
+                        <button @click="clearAllData" class="w-full bg-red-50 text-red-600 border border-red-200 py-2.5 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                            ⚠️ 清除所有資料
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showCategoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm p-5">
+            <div class="bg-white rounded-3xl w-full max-w-xs shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out]">
+                <div class="p-5 border-b border-zinc-100 flex justify-between items-center">
+                    <h3 class="font-bold text-zinc-900">分類清單</h3>
+                    <button @click="showCategoryModal = false" class="text-zinc-400 hover:text-zinc-600 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div class="flex gap-2">
+                        <input v-model="newCategoryName" @keyup.enter="addCategory" type="text" placeholder="新分類名稱..." class="flex-1 p-2.5 border border-zinc-200 bg-zinc-50/50 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                        <button @click="addCategory" class="px-4 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-zinc-800 transition-colors">新增</button>
+                    </div>
+                    <ul class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <li v-for="category in categories" :key="category" class="flex justify-between items-center p-3 rounded-xl text-sm bg-white border border-zinc-100 shadow-sm">
+                            <span class="font-semibold text-zinc-700">{{ category }}</span>
+                            <button v-if="category !== '全部'" @click="removeCategory(category)" class="text-zinc-400 hover:text-red-500 p-1 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <style>
+        @keyframes slideUp {
+            from { transform: translateY(15px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+
+    <script>
+        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const categories = ref(['全部', '日常溝通', '貓咪飲食']);
+                const selectedCategory = ref('全部');
+                const activeTab = ref('單字'); 
+                
+                const showAddModal = ref(false);
+                const showSettingsModal = ref(false);
+                const showCategoryModal = ref(false);
+                
+                const newCategoryName = ref('');
+                const excelFontSize = ref(16);
+                const maskColumnA = ref(false);
+                const maskColumnB = ref(false);
+
+                const newCard = ref({ zh: '', en: '', category: '日常溝通', tab: '單字' });
+                const tempAudioData = ref('');
+                const uploadStatus = ref('');
+                const cards = ref([]);
+
+                const hiddenFileInput = ref(null);
+                const editingCard = ref(null);
+
+                // 🌟 新增防呆：安全儲存機制
+                const saveToLocalStorage = () => {
+                    try {
+                        const dataToSave = { categories: categories.value, cards: cards.value };
+                        localStorage.setItem('mobile_app_data', JSON.stringify(dataToSave));
+                    } catch (e) {
+                        console.error("儲存失敗:", e);
+                        // 偵測是否為容量爆滿
+                        if (e.name === 'QuotaExceededError' || e.code === 22 || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                            alert('⚠️ 瀏覽器儲存空間已滿！\n\n無法再儲存新的變更或音檔。強烈建議：\n1. 刪除幾張帶有舊音檔的字卡\n2. 前往設定「匯出備份」後，點擊「清除所有資料」重新匯入\n3. 盡量改用「AI 系統語音」代替上傳 MP3');
+                        } else {
+                            alert('⚠️ 儲存資料時發生未知錯誤！');
+                        }
+                    }
+                };
+
+                const openAddModal = () => {
+                    newCard.value.tab = activeTab.value;
+                    showAddModal.value = true;
+                };
+
+                const resizeTextarea = (e) => {
+                    const el = e.target;
+                    el.style.height = 'auto'; 
+                    el.style.height = el.scrollHeight + 'px'; 
+                };
+
+                const forceResizeAll = async () => {
+                    await nextTick();
+                    document.querySelectorAll('textarea').forEach(el => {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                    });
+                };
+
+                onMounted(() => {
+                    const saved = localStorage.getItem('mobile_app_data') || localStorage.getItem('excel_app_data');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed.categories) categories.value = parsed.categories;
+                            if (parsed.cards) cards.value = parsed.cards;
+                            cards.value.forEach(c => { if(!c.tab) c.tab = '單字'; });
+                        } catch (e) { console.error(e); }
+                    } else {
+                        cards.value = [
+                            { id: 1, tab: '單字', zh: '回覆', en: 'Respond', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false },
+                            { id: 2, tab: '句子', zh: '這是一段用來測試自動換行以及文字框是否會根據內文自動延伸變大的句子。', en: 'This is a long sentence to test word wrap and auto-resizing. It should display fully without issues.', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false }
+                        ];
+                    }
+                    forceResizeAll();
+                });
+
+                const exportData = () => {
+                    const dataStr = JSON.stringify({ categories: categories.value, cards: cards.value });
+                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                    const linkElement = document.createElement('a');
+                    linkElement.setAttribute('href', dataUri);
+                    linkElement.setAttribute('download', 'My_App_Backup.json');
+                    linkElement.click();
+                    showSettingsModal.value = false;
+                };
+
+                const importData = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const imported = JSON.parse(e.target.result);
+                            if (imported.categories && imported.cards) {
+                                categories.value = imported.categories;
+                                cards.value = imported.cards;
+                                saveToLocalStorage();
+                                showSettingsModal.value = false;
+                                alert('✅ 成功匯入資料！');
+                                forceResizeAll();
+                            }
+                        } catch (err) { alert('檔案格式錯誤！'); }
+                    };
+                    reader.readAsText(file);
+                };
+
+                // 🌟 緊急逃生按鈕
+                const clearAllData = () => {
+                    if (confirm('🚨 嚴重警告：這將會刪除您所有的字卡與設定！\n\n除非您的 App 已經因為容量問題完全卡死，否則請先進行「匯出備份」。\n\n您確定要繼續刪除嗎？')) {
+                        localStorage.removeItem('mobile_app_data');
+                        localStorage.removeItem('excel_app_data');
+                        location.reload(); 
+                    }
+                };
+
+                watch([maskColumnA, maskColumnB, activeTab, selectedCategory], async () => {
+                    cards.value.forEach(c => { c.showA = false; c.showB = false; });
+                    await nextTick();
+                    forceResizeAll();
+                });
+
+                const filteredCards = computed(() => {
+                    let result = cards.value.filter(card => card.tab === activeTab.value);
+                    if (selectedCategory.value !== '全部') {
+                        result = result.filter(card => card.category === selectedCategory.value);
+                    }
+                    return result;
+                });
+
+                // 🌟 檔案大小檢查
+                const checkFileSize = (file) => {
+                    if (file.size > 1.5 * 1024 * 1024) { // 限制 1.5 MB
+                        alert('⚠️ 檔案太大囉！\n為了避免網頁儲存空間爆滿卡死，請上傳小於 1.5MB 的 MP3 檔案，或是放棄上傳，直接使用「內建系統發音」。');
+                        return false;
+                    }
+                    return true;
+                };
+
+                const handleAudioUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    if (!checkFileSize(file)) {
+                        event.target.value = ''; // 清空選擇
+                        return;
+                    }
+                    uploadStatus.value = '音檔處理中...';
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        tempAudioData.value = e.target.result;
+                        uploadStatus.value = `已載入 MP3`;
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const triggerAudioReplace = (card) => {
+                    editingCard.value = card; 
+                    if(hiddenFileInput.value) hiddenFileInput.value.click(); 
+                };
+
+                const handleAudioReplace = (event) => {
+                    const file = event.target.files[0];
+                    if (!file || !editingCard.value) return;
+                    if (!checkFileSize(file)) {
+                        event.target.value = '';
+                        editingCard.value = null;
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        editingCard.value.audioData = e.target.result;
+                        saveToLocalStorage();
+                        alert('✅ 音檔已成功更新！');
+                        
+                        event.target.value = ''; 
+                        editingCard.value = null; 
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const addCategory = () => {
+                    const name = newCategoryName.value.trim();
+                    if (name && !categories.value.includes(name)) {
+                        categories.value.push(name);
+                        newCard.value.category = name;
+                        newCategoryName.value = '';
+                        saveToLocalStorage();
+                    }
+                };
+
+                const removeCategory = (catToRemove) => {
+                    if (confirm(`確定刪除分類「${catToRemove}」？`)) {
+                        categories.value = categories.value.filter(c => c !== catToRemove);
+                        if (selectedCategory.value === catToRemove) selectedCategory.value = '全部';
+                        saveToLocalStorage();
+                    }
+                };
+
+                const addNewCard = () => {
+                    if (!newCard.value.zh || !newCard.value.en) return alert('請填寫中英文內容！');
+
+                    cards.value.push({
+                        id: Date.now(),
+                        tab: newCard.value.tab,
+                        zh: newCard.value.zh, 
+                        en: newCard.value.en,
+                        category: newCard.value.category,
+                        audioData: tempAudioData.value, 
+                        isPlaying: false, showA: false, showB: false
+                    });
+
+                    newCard.value.zh = ''; newCard.value.en = '';
+                    tempAudioData.value = ''; uploadStatus.value = '';
+                    
+                    const fileInput = document.querySelector('.border-dashed input[type="file"]');
+                    if (fileInput) fileInput.value = '';
+                    
+                    saveToLocalStorage();
+                    showAddModal.value = false;
+                    forceResizeAll();
+                };
+
+                const removeCard = (id) => {
+                    if(confirm('確定刪除此字卡？')) {
+                        cards.value = cards.value.filter(c => c.id !== id);
+                        saveToLocalStorage();
+                    }
+                };
+
+                let currentAudio = null;
+                let activeCard = null;
+
+                const playAudio = (card) => {
+                    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+                    if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+
+                    if (activeCard === card && card.isPlaying) { card.isPlaying = false; activeCard = null; return; }
+                    if (activeCard) activeCard.isPlaying = false;
+
+                    activeCard = card; 
+                    card.isPlaying = true;
+
+                    if (card.audioData) {
+                        currentAudio = new Audio(card.audioData);
+                        currentAudio.play().catch(err => { card.isPlaying = false; activeCard = null; });
+                        currentAudio.onended = () => { card.isPlaying = false; activeCard = null; };
+                    } else {
+                        if ('speechSynthesis' in window) {
+                            const utterance = new SpeechSynthesisUtterance(card.en);
+                            utterance.lang = 'en-US'; 
+                            utterance.onend = () => { card.isPlaying = false; activeCard = null; };
+                            utterance.onerror = () => { card.isPlaying = false; activeCard = null; };
+                            window.speechSynthesis.speak(utterance);
+                        } else {
+                            alert('您的瀏覽器不支援自動語音功能，請手動上傳 MP3 音檔。');
+                            card.isPlaying = false; activeCard = null;
+                        }
+                    }
+                };
+
+                return { 
+                    cards, categories, selectedCategory, filteredCards, playAudio,
+                    showCategoryModal, showAddModal, showSettingsModal, openAddModal,
+                    newCategoryName, addCategory, removeCategory,
+                    newCard, addNewCard, removeCard, handleAudioUpload, uploadStatus,
+                    excelFontSize, maskColumnA, maskColumnB, exportData, importData, saveToLocalStorage,
+                    activeTab, resizeTextarea, forceResizeAll, clearAllData,
+                    hiddenFileInput, triggerAudioReplace, handleAudioReplace
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
