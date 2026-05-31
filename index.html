@@ -56,9 +56,15 @@
             <div v-for="(card, index) in filteredCards" :key="card.id" class="bg-white rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-zinc-100 relative group transition-all">
                 
                 <div class="flex justify-between items-center mb-4">
-                    <span class="text-[11px] font-bold text-zinc-400 bg-zinc-100/80 px-2.5 py-1 rounded-md tracking-wider">
-                        #{{ index + 1 }}
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold text-zinc-400 bg-zinc-100/80 px-2.5 py-1 rounded-md tracking-wider">
+                            #{{ index + 1 }}
+                        </span>
+                        <button @click="toggleCardTab(card)" class="text-[10px] font-bold text-zinc-500 bg-zinc-50 border border-zinc-200 px-2.5 py-1 rounded-md hover:bg-zinc-100 hover:text-zinc-800 transition-colors flex items-center gap-1" title="點擊移動卡片">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+                            移至{{ card.tab === '單字' ? '句子' : '單字' }}
+                        </button>
+                    </div>
                     
                     <div class="flex gap-2 items-center">
                         <button @click="triggerMediaReplace(card)" class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors" title="更換圖片/影片">
@@ -281,7 +287,6 @@
                 const tempAudioData = ref('');
                 const uploadStatus = ref('');
                 
-                // 新增多媒體用的變數
                 const tempMediaData = ref('');
                 const tempMediaType = ref('');
                 const mediaUploadStatus = ref('');
@@ -394,6 +399,14 @@
                     return result;
                 });
 
+                // 🌟 新增：移動卡片區塊的功能
+                const toggleCardTab = (card) => {
+                    card.tab = card.tab === '單字' ? '句子' : '單字';
+                    saveToLocalStorage();
+                    // 卡片移動後會自動從畫面上消失（因為過濾條件變了），呼叫重新計算高度避免版面跑掉
+                    forceResizeAll();
+                };
+
                 const checkFileSize = (file) => {
                     if (file.size > 1.5 * 1024 * 1024) { 
                         alert('⚠️ 檔案太大囉！\n為了避免網頁儲存空間爆滿卡死，請上傳小於 1.5MB 的檔案。如果是影片，請盡量壓縮尺寸。');
@@ -411,7 +424,6 @@
                     reader.readAsDataURL(file);
                 };
 
-                // ===== 處理新增卡片時的多媒體上傳 =====
                 const handleMediaUpload = (event) => {
                     const file = event.target.files[0];
                     if (!file || !checkFileSize(file)) { event.target.value = ''; return; }
@@ -430,7 +442,6 @@
                     if(hiddenAudioInput.value) hiddenAudioInput.value.click(); 
                 };
 
-                // ===== 觸發更換多媒體 =====
                 const triggerMediaReplace = (card) => {
                     editingCard.value = card; 
                     if(hiddenMediaInput.value) hiddenMediaInput.value.click(); 
@@ -449,7 +460,6 @@
                     reader.readAsDataURL(file);
                 };
 
-                // ===== 執行更換多媒體 =====
                 const handleMediaReplace = (event) => {
                     const file = event.target.files[0];
                     if (!file || !editingCard.value || !checkFileSize(file)) { event.target.value = ''; editingCard.value = null; return; }
@@ -492,8 +502,8 @@
                         en: newCard.value.en,
                         category: newCard.value.category,
                         audioData: tempAudioData.value, 
-                        mediaData: tempMediaData.value, // 存入多媒體
-                        mediaType: tempMediaType.value, // 存入類型 (知道是圖片還是影片)
+                        mediaData: tempMediaData.value, 
+                        mediaType: tempMediaType.value, 
                         isPlaying: false, showA: false, showB: false
                     });
 
@@ -550,7 +560,7 @@
                     cards, categories, selectedCategory, filteredCards, playAudio,
                     showCategoryModal, showAddModal, showSettingsModal, openAddModal,
                     newCategoryName, addCategory, removeCategory,
-                    newCard, addNewCard, removeCard, 
+                    newCard, addNewCard, removeCard, toggleCardTab, // 導出移動功能
                     handleAudioUpload, uploadStatus, 
                     handleMediaUpload, mediaUploadStatus,
                     excelFontSize, maskColumnA, maskColumnB, exportData, importData, saveToLocalStorage,
