@@ -61,13 +61,18 @@
                     </span>
                     
                     <div class="flex gap-2 items-center">
-                        <button @click="triggerAudioReplace(card)" class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors" title="更換/補傳 MP3">
+                        <button @click="triggerMediaReplace(card)" class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors" title="更換圖片/影片">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                        </button>
+
+                        <button @click="triggerAudioReplace(card)" class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors" title="更換 MP3">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                         </button>
                         
                         <button @click="removeCard(card.id)" class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-300 hover:bg-red-50 hover:text-red-500 transition-colors" title="刪除字卡">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
+                        
                         <button @click="playAudio(card)" class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border"
                                 :class="card.isPlaying ? 'bg-zinc-900 border-zinc-900 text-white scale-110 shadow-md' : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'">
                             <svg v-if="!card.isPlaying" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 ml-0.5"><path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd" /></svg>
@@ -77,6 +82,12 @@
                 </div>
 
                 <div class="flex flex-col gap-3">
+                    
+                    <div v-if="card.mediaData" class="w-full rounded-xl overflow-hidden bg-zinc-100 flex items-center justify-center relative shadow-sm border border-zinc-100">
+                        <img v-if="card.mediaType && card.mediaType.startsWith('image/')" :src="card.mediaData" class="w-full h-auto object-cover max-h-56">
+                        <video v-else-if="card.mediaType && card.mediaType.startsWith('video/')" :src="card.mediaData" controls class="w-full h-auto max-h-56 bg-black"></video>
+                    </div>
+
                     <div class="relative w-full">
                         <div v-if="maskColumnA && !card.showA" @click="card.showA = true" class="absolute inset-0 bg-zinc-900 rounded-xl flex items-center justify-center cursor-pointer z-10 shadow-inner backdrop-blur-sm">
                             <span class="text-white text-xs font-bold tracking-widest opacity-90">點擊查看</span>
@@ -105,7 +116,8 @@
             </div>
         </main>
 
-        <input type="file" accept="audio/*" ref="hiddenFileInput" class="hidden" @change="handleAudioReplace">
+        <input type="file" accept="audio/*" ref="hiddenAudioInput" class="hidden" @change="handleAudioReplace">
+        <input type="file" accept="image/*, video/*" ref="hiddenMediaInput" class="hidden" @change="handleMediaReplace">
 
         <div class="absolute bottom-24 right-6 z-40">
             <button @click="openAddModal" class="w-14 h-14 bg-zinc-900 text-white rounded-full shadow-[0_10px_25px_rgba(24,24,27,0.3)] flex items-center justify-center hover:scale-105 hover:bg-zinc-800 active:scale-95 transition-all duration-300">
@@ -125,14 +137,15 @@
         </nav>
 
         <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/60 backdrop-blur-sm p-0 sm:p-4 transition-opacity">
-            <div class="bg-white w-full max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden animate-[slideUp_0.4s_cubic-bezier(0.16,1,0.3,1)]">
-                <div class="p-5 border-b border-zinc-100 flex justify-between items-center bg-white">
+            <div class="bg-white w-full max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden animate-[slideUp_0.4s_cubic-bezier(0.16,1,0.3,1)] max-h-[90vh] flex flex-col">
+                <div class="p-5 border-b border-zinc-100 flex justify-between items-center bg-white shrink-0">
                     <h3 class="font-bold text-zinc-900 flex items-center gap-2">新增學習卡</h3>
                     <button @click="showAddModal = false" class="w-8 h-8 rounded-full bg-zinc-100 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
-                <div class="p-5 space-y-4">
+                
+                <div class="p-5 overflow-y-auto space-y-4">
                     <div class="flex gap-2 bg-zinc-100 p-1 rounded-xl">
                         <button @click="newCard.tab = '單字'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-300" :class="newCard.tab === '單字' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'">存入【單字】</button>
                         <button @click="newCard.tab = '句子'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-300" :class="newCard.tab === '句子' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'">存入【句子】</button>
@@ -152,19 +165,33 @@
                         </div>
                     </div>
                     
-                    <div class="border-2 border-dashed border-zinc-200 p-5 rounded-xl text-center relative hover:border-zinc-400 transition-colors bg-zinc-50/50">
-                        <input type="file" accept="audio/*" @change="handleAudioUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                        <div v-if="!uploadStatus" class="pointer-events-none text-zinc-500 flex flex-col items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
-                            <span class="text-sm font-bold text-zinc-600 mt-1">上傳 MP3 (限制 1.5MB 內)</span>
-                            <span class="text-[11px] text-zinc-400">不上傳則自動使用 AI 語音朗讀</span>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="border-2 border-dashed border-zinc-200 p-4 rounded-xl text-center relative hover:border-zinc-400 transition-colors bg-zinc-50/50 flex flex-col justify-center min-h-[100px]">
+                            <input type="file" accept="image/*, video/*" @change="handleMediaUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <div v-if="!mediaUploadStatus" class="pointer-events-none text-zinc-500 flex flex-col items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                                <span class="text-[12px] font-bold text-zinc-600 mt-1">圖/影 (可選)</span>
+                            </div>
+                            <div v-else class="pointer-events-none text-zinc-900 font-bold flex flex-col items-center justify-center gap-1 text-[12px]">
+                                <span class="text-lg">✅</span> {{ mediaUploadStatus }}
+                            </div>
                         </div>
-                        <div v-else class="pointer-events-none text-zinc-900 font-bold flex items-center justify-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clip-rule="evenodd" /></svg>
-                            {{ uploadStatus }}
+
+                        <div class="border-2 border-dashed border-zinc-200 p-4 rounded-xl text-center relative hover:border-zinc-400 transition-colors bg-zinc-50/50 flex flex-col justify-center min-h-[100px]">
+                            <input type="file" accept="audio/*" @change="handleAudioUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <div v-if="!uploadStatus" class="pointer-events-none text-zinc-500 flex flex-col items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+                                <span class="text-[12px] font-bold text-zinc-600 mt-1">MP3 (可選)</span>
+                            </div>
+                            <div v-else class="pointer-events-none text-zinc-900 font-bold flex flex-col items-center justify-center gap-1 text-[12px]">
+                                <span class="text-lg">✅</span> {{ uploadStatus }}
+                            </div>
                         </div>
                     </div>
+                    <p class="text-[10px] text-zinc-400 text-center leading-tight">⚠️ 為避免容量爆滿當機，單個檔案請勿超過 1.5MB。<br>不傳 MP3 則自動使用 AI 語音。</p>
+                </div>
 
+                <div class="p-5 border-t border-zinc-100 shrink-0">
                     <button @click="addNewCard" class="w-full bg-zinc-900 text-white py-3.5 rounded-xl font-bold text-base hover:bg-zinc-800 shadow-lg active:scale-[0.98] transition-all">
                         確認並加入
                     </button>
@@ -250,11 +277,19 @@
                 const maskColumnB = ref(false);
 
                 const newCard = ref({ zh: '', en: '', category: '日常溝通', tab: '單字' });
+                
                 const tempAudioData = ref('');
                 const uploadStatus = ref('');
+                
+                // 新增多媒體用的變數
+                const tempMediaData = ref('');
+                const tempMediaType = ref('');
+                const mediaUploadStatus = ref('');
+
                 const cards = ref([]);
 
-                const hiddenFileInput = ref(null);
+                const hiddenAudioInput = ref(null);
+                const hiddenMediaInput = ref(null);
                 const editingCard = ref(null);
 
                 const saveToLocalStorage = () => {
@@ -264,7 +299,7 @@
                     } catch (e) {
                         console.error("儲存失敗:", e);
                         if (e.name === 'QuotaExceededError' || e.code === 22 || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-                            alert('⚠️ 瀏覽器儲存空間已滿！\n\n無法再儲存新的變更或音檔。強烈建議：\n1. 刪除幾張帶有舊音檔的字卡\n2. 前往設定「匯出備份」後，點擊「清除所有資料」重新匯入\n3. 盡量改用「AI 系統語音」代替上傳 MP3');
+                            alert('⚠️ 瀏覽器儲存空間已滿！\n\n無法再儲存新的變更、音檔或圖片。強烈建議：\n1. 刪除幾張帶有舊圖片/音檔的字卡\n2. 點擊「設定」清空所有資料再重新開始');
                         } else {
                             alert('⚠️ 儲存資料時發生未知錯誤！');
                         }
@@ -301,8 +336,7 @@
                         } catch (e) { console.error(e); }
                     } else {
                         cards.value = [
-                            { id: 1, tab: '單字', zh: '回覆', en: 'Respond', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false },
-                            { id: 2, tab: '句子', zh: '這是一段用來測試自動換行以及文字框是否會根據內文自動延伸變大的句子。', en: 'This is a long sentence to test word wrap and auto-resizing. It should display fully without issues.', category: '日常溝通', audioData: '', isPlaying: false, showA: false, showB: false }
+                            { id: 1, tab: '單字', zh: '回覆', en: 'Respond', category: '日常溝通', audioData: '', mediaData: '', mediaType: '', isPlaying: false, showA: false, showB: false }
                         ];
                     }
                     forceResizeAll();
@@ -339,7 +373,7 @@
                 };
 
                 const clearAllData = () => {
-                    if (confirm('🚨 嚴重警告：這將會刪除您所有的字卡與設定！\n\n除非您的 App 已經因為容量問題完全卡死，否則請先進行「匯出備份」。\n\n您確定要繼續刪除嗎？')) {
+                    if (confirm('🚨 嚴重警告：這將會刪除您所有的字卡與設定！\n\n您確定要繼續刪除嗎？')) {
                         localStorage.removeItem('mobile_app_data');
                         localStorage.removeItem('excel_app_data');
                         location.reload(); 
@@ -362,7 +396,7 @@
 
                 const checkFileSize = (file) => {
                     if (file.size > 1.5 * 1024 * 1024) { 
-                        alert('⚠️ 檔案太大囉！\n為了避免網頁儲存空間爆滿卡死，請上傳小於 1.5MB 的 MP3 檔案，或是放棄上傳，直接使用「內建系統發音」。');
+                        alert('⚠️ 檔案太大囉！\n為了避免網頁儲存空間爆滿卡死，請上傳小於 1.5MB 的檔案。如果是影片，請盡量壓縮尺寸。');
                         return false;
                     }
                     return true;
@@ -370,42 +404,62 @@
 
                 const handleAudioUpload = (event) => {
                     const file = event.target.files[0];
-                    if (!file) return;
-                    if (!checkFileSize(file)) {
-                        event.target.value = ''; 
-                        return;
-                    }
+                    if (!file || !checkFileSize(file)) { event.target.value = ''; return; }
                     uploadStatus.value = '音檔處理中...';
                     const reader = new FileReader();
-                    reader.onload = (e) => {
-                        tempAudioData.value = e.target.result;
-                        uploadStatus.value = `已載入 MP3`;
+                    reader.onload = (e) => { tempAudioData.value = e.target.result; uploadStatus.value = `已載入 MP3`; };
+                    reader.readAsDataURL(file);
+                };
+
+                // ===== 處理新增卡片時的多媒體上傳 =====
+                const handleMediaUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file || !checkFileSize(file)) { event.target.value = ''; return; }
+                    mediaUploadStatus.value = '圖影處理中...';
+                    const reader = new FileReader();
+                    reader.onload = (e) => { 
+                        tempMediaData.value = e.target.result; 
+                        tempMediaType.value = file.type;
+                        mediaUploadStatus.value = `已載入`; 
                     };
                     reader.readAsDataURL(file);
                 };
 
                 const triggerAudioReplace = (card) => {
                     editingCard.value = card; 
-                    if(hiddenFileInput.value) hiddenFileInput.value.click(); 
+                    if(hiddenAudioInput.value) hiddenAudioInput.value.click(); 
+                };
+
+                // ===== 觸發更換多媒體 =====
+                const triggerMediaReplace = (card) => {
+                    editingCard.value = card; 
+                    if(hiddenMediaInput.value) hiddenMediaInput.value.click(); 
                 };
 
                 const handleAudioReplace = (event) => {
                     const file = event.target.files[0];
-                    if (!file || !editingCard.value) return;
-                    if (!checkFileSize(file)) {
-                        event.target.value = '';
-                        editingCard.value = null;
-                        return;
-                    }
-                    
+                    if (!file || !editingCard.value || !checkFileSize(file)) { event.target.value = ''; editingCard.value = null; return; }
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         editingCard.value.audioData = e.target.result;
                         saveToLocalStorage();
                         alert('✅ 音檔已成功更新！');
-                        
-                        event.target.value = ''; 
-                        editingCard.value = null; 
+                        event.target.value = ''; editingCard.value = null; 
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                // ===== 執行更換多媒體 =====
+                const handleMediaReplace = (event) => {
+                    const file = event.target.files[0];
+                    if (!file || !editingCard.value || !checkFileSize(file)) { event.target.value = ''; editingCard.value = null; return; }
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        editingCard.value.mediaData = e.target.result;
+                        editingCard.value.mediaType = file.type;
+                        saveToLocalStorage();
+                        alert('✅ 圖片/影片已成功更新！');
+                        event.target.value = ''; editingCard.value = null; 
                     };
                     reader.readAsDataURL(file);
                 };
@@ -438,14 +492,16 @@
                         en: newCard.value.en,
                         category: newCard.value.category,
                         audioData: tempAudioData.value, 
+                        mediaData: tempMediaData.value, // 存入多媒體
+                        mediaType: tempMediaType.value, // 存入類型 (知道是圖片還是影片)
                         isPlaying: false, showA: false, showB: false
                     });
 
                     newCard.value.zh = ''; newCard.value.en = '';
                     tempAudioData.value = ''; uploadStatus.value = '';
+                    tempMediaData.value = ''; tempMediaType.value = ''; mediaUploadStatus.value = '';
                     
-                    const fileInput = document.querySelector('.border-dashed input[type="file"]');
-                    if (fileInput) fileInput.value = '';
+                    document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
                     
                     saveToLocalStorage();
                     showAddModal.value = false;
@@ -494,10 +550,12 @@
                     cards, categories, selectedCategory, filteredCards, playAudio,
                     showCategoryModal, showAddModal, showSettingsModal, openAddModal,
                     newCategoryName, addCategory, removeCategory,
-                    newCard, addNewCard, removeCard, handleAudioUpload, uploadStatus,
+                    newCard, addNewCard, removeCard, 
+                    handleAudioUpload, uploadStatus, 
+                    handleMediaUpload, mediaUploadStatus,
                     excelFontSize, maskColumnA, maskColumnB, exportData, importData, saveToLocalStorage,
                     activeTab, resizeTextarea, forceResizeAll, clearAllData,
-                    hiddenFileInput, triggerAudioReplace, handleAudioReplace
+                    hiddenAudioInput, hiddenMediaInput, triggerAudioReplace, handleAudioReplace, triggerMediaReplace, handleMediaReplace
                 };
             }
         }).mount('#app');
